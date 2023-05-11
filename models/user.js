@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
-
 const validator = require("validator");
-
 const bcryptjs = require("bcryptjs");
+const jwt = require("jsonwebtoken");
 
 const userSchema = mongoose.Schema({
   username: {
@@ -50,6 +49,12 @@ const userSchema = mongoose.Schema({
   city: {
     type: String,
   },
+  tokens: [
+    {
+      type: String,
+      required: true,
+    },
+  ],
 });
 // /////////////////////////////////////////////////////////
 /// =====> Hash Password
@@ -69,12 +74,33 @@ userSchema.statics.findByCredentials = async (userEmail, userPass) => {
     throw new Error("Unable To Login");
   }
 
-  const isMatch = await bcryptjs.compare(userPass, user.password); 
+  const isMatch = await bcryptjs.compare(userPass, user.password);
   if (!isMatch) {
     throw new Error("Unable To Login");
   }
   return user;
 };
+/////////////////////////////////////////////////////////////
+///// =======> create token
+userSchema.methods.generateToken = async function () {
+  const user = this;
+  const token = jwt.sign({ _id: user._id.toString() }, "mysecretkey");
+  user.tokens = user.tokens.concat(token);
+  await user.save();
+  return token;
+};
+////////////////////////////////////////////////////////////////////////////
+/////// =====> Hide private data
+
+userSchema.methods.toJSON=function(){
+  const user =this
+  const userObj = user.toObject()
+  delete userObj.password
+  delete userObj.tokens
+  return userObj
+}
+
+
 
 const User = mongoose.model("Uesr", userSchema);
 
